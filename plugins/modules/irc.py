@@ -206,6 +206,13 @@ def send_msg(msg, server='localhost', port='6667', channel=None, nick_to=None, k
     start = time.time()
     while 1:
         motd += to_native(irc.recv(1024))
+        # check for spoof prevention and reply accordingly
+        ping_match = re.search('PING :[0-9a-z]+', motd, flags=re.M|re.I)
+        if ping_match:
+            pingresponse = 'PONG ' + ping_match.group().split() [ 1 ] + '\r\n'
+            irc.send(to_bytes(pingresponse))
+            # recv the next message as motd again, the first recv was spoof prevention
+            motd += to_native(irc.recv(1024))
         # The server might send back a shorter nick than we specified (due to NICKLEN),
         #  so grab that and use it from now on (assuming we find the 00[1-4] response).
         match = re.search(r'^:\S+ 00[1-4] (?P<nick>\S+) :', motd, flags=re.M)
